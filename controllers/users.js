@@ -22,18 +22,17 @@ module.exports.addUser = (req, res) => {
 module.exports.getUserId = (req, res) => {
   if (req.params.userId.length === 24) {
     User.findById(req.params.userId)
+      .orFail(new Error('InvalidId'))
       .then((user) => {
-        if (user) {
-          res.send(user);
-          return;
-        }
-        res
-          .status(404)
-          .send({ message: 'Пользователь с данным индификатором не найден' });
+        res.status(200).send(user);
       })
-      .catch(() => res
-        .status(500)
-        .send({ message: 'Ошибка поиска пользователя' }));
+      .catch((error) => {
+        if (error.message === 'InvalidId') {
+          res.status(404).send({ message: 'Пользователь с данным индификатором не найден' });
+        } else {
+          res.status(500).send({ message: 'На сервере произошла ошибка' });
+        }
+      });
   } else {
     res.status(400).send({ message: 'Некорректный индификатор' });
   }
@@ -48,7 +47,7 @@ module.exports.editUserInfo = (req, res) => {
         if (error.name === 'ValidationError') {
           res.status(400).send({ message: error.message });
         } else {
-          res.status(404).send({ message: 'Пользователь с данным индификатором не найден' });
+          res.status(500).send({ message: 'На сервере произошла ошибка' });
         }
       });
   } else {
@@ -64,7 +63,7 @@ module.exports.editUserAvatar = (req, res) => {
         if (error.name === 'ValidationError') {
           res.status(400).send({ message: error.message });
         } else {
-          res.status(404).send({ message: 'Пользователь с данным индификатором не найден' });
+          res.status(500).send({ message: 'На сервере произошла ошибка' });
         }
       });
   } else {
