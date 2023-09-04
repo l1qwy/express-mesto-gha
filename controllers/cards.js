@@ -1,90 +1,107 @@
+const httpConstants = require('http2').constants;
+const BadRequestError = require('../errors/badRequest');
+const NotFoundError = require('../errors/notFound');
 const Card = require('../models/card');
 
-module.exports.getCards = (req, res) => {
+module.exports.getCards = (req, res, next) => {
   Card.find({})
     .populate(['owner', 'likes'])
-    .then((cards) => res.send(cards))
-    .catch(() => res.status(500).send({ message: 'На сервере произошла ошибка' }));
+    .then((cards) => res.status(httpConstants.HTTP_STATUS_OK).send(cards))
+    .catch(next);
 };
 
-module.exports.addCard = (req, res) => {
+module.exports.addCard = (req, res, next) => {
   const { name, link } = req.body;
   Card.create({ name, link, owner: req.user._id })
     .then((card) => {
       Card.findById(card._id)
+        .orFail()
         .populate('owner')
-        .then((data) => res.status(201).send(data))
-        .catch(() => res.status(500).send({ message: 'На сервере произошла ошибка' }));
+        .then((data) => res.status(httpConstants.HTTP_STATUS_CREATED).send(data))
+        .catch((error) => {
+          if (error.name === 'DocumentNotFoundError') {
+            next(
+              new NotFoundError('Карточка с указанным индификатором не найдена'),
+            );
+          } else {
+            next(error);
+          }
+        });
     })
     .catch((error) => {
       if (error.name === 'ValidationError') {
-        res.status(400).send({ message: error.message });
+        next(new BadRequestError(error.message));
       } else {
-        res.status(500).send({ message: 'На сервере произошла ошибка' });
+        next(error);
       }
     });
 };
 
-module.exports.deleteCard = (req, res) => {
-  if (req.params.cardId.length === 24) {
-    Card.findByIdAndRemove(req.params.cardId)
-      .then((card) => {
-        if (card) {
-          res.send({ message: 'Карточка удалена успешно' });
-          return;
-        }
-        res
-          .status(404)
-          .send({ message: 'Карточка с данным идентификатором не найдена' });
-      })
-      .catch(() => res.status(500).send({ message: 'На сервере произошла ошибка' }));
-  } else {
-    res.status(400).send({ message: 'Некорректный индификатор' });
-  }
+module.exports.deleteCard = (req, res, next) => {
+  Card.findByIdAndRemove(req.params.cardId)
+    .orFail()
+    .then(() => {
+      res
+        .status(httpConstants.HTTP_STATUS_OK)
+        .send({ message: 'Карточка удалена' });
+    })
+    .catch((error) => {
+      if (error.name === 'DocumentNotFoundError') {
+        next(
+          new NotFoundError('Карточка с указанным индификатором не найдена'),
+        );
+      } else if (error.name === 'CastError') {
+        next(new BadRequestError('Некорректный индификатор'));
+      } else {
+        next(error);
+      }
+    });
 };
 
-module.exports.likeCard = (req, res) => {
-  if (req.params.cardId.length === 24) {
-    Card.findByIdAndUpdate(
-      req.params.cardId,
-      { $addToSet: { likes: req.user._id } },
-      { new: true },
-    )
-      .populate(['owner', 'likes'])
-      .then((card) => {
-        if (card) {
-          res.send(card);
-          return;
-        }
-        res
-          .status(404)
-          .send({ message: 'Карточка с данным идентификатором не найдена' });
-      })
-      .catch(() => res.status(500).send({ message: 'На сервере произошла ошибка' }));
-  } else {
-    res.status(400).send({ message: 'Некорректный индификатор' });
-  }
+module.exports.likeCard = (req, res, next) => {
+  Card.findByIdAndUpdate(
+    req.params.cardId,
+    { $addToSet: { likes: req.user._id } },
+    { new: true },
+  )
+    .orFail()
+    .populate(['owner', 'likes'])
+    .then((card) => {
+      res.status(httpConstants.HTTP_STATUS_OK).send(card);
+    })
+    .catch((error) => {
+      if (error.name === 'DocumentNotFoundError') {
+        next(
+          new NotFoundError('Карточка с указанным индификатором не найдена'),
+        );
+      } else if (error.name === 'CastError') {
+        next(new BadRequestError('Некорректный индификатор'));
+      } else {
+        next(error);
+      }
+    });
 };
 
-module.exports.unlikeCard = (req, res) => {
-  if (req.params.cardId.length === 24) {
-    Card.findByIdAndUpdate(
-      req.params.cardId,
-      { $pull: { likes: req.user._id } },
-      { new: true },
-    )
-      .populate(['owner', 'likes'])
-      .then((card) => {
-        if (card) {
-          res.send(card);
-          return;
-        }
-        res
-          .status(404)
-          .send({ message: 'Карточка с данным идентификатором не найдена' });
-      })
-      .catch(() => res.status(500).send({ message: 'На сервере произошла ошибка' }));
-  } else {
-    res.status(400).send({ message: 'Некорректный индификатор' });
-  }
+module.exports.unlikeCard = (req, res, next) => {
+  Card.findByIdAndUpdate(
+    req.params.cardId,
+    { $pull: { likes: req.user._id } },
+    { new: true },
+  )
+    .orFail()
+    .populate(['owner', 'likes'])
+    .then((card) => {
+      res.status(httpConstants.HTTP_STATUS_OK).send(card);
+    })
+    .catch((error) => {
+      if (error.name === 'DocumentNotFoundError') {
+        next(
+          new NotFoundError('Карточка с указанным индификатором не найдена'),
+        );
+      } else if (error.name === 'CastError') {
+        next(new BadRequestError('Некорректный индификатор'));
+      } else {
+        next(error);
+      }
+    });
 };
