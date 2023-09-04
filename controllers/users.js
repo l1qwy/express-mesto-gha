@@ -1,7 +1,10 @@
 const httpConstants = require('http2').constants;
+const bcrypt = require('bcryptjs');
+// const jwt = require('jsonwebtoken');
 const User = require('../models/user');
 const BadRequestError = require('../errors/badRequest');
 const NotFoundError = require('../errors/notFound');
+const ConflictError = require('../errors/conflict');
 
 module.exports.getUsers = (req, res, next) => {
   User.find({})
@@ -10,16 +13,25 @@ module.exports.getUsers = (req, res, next) => {
 };
 
 module.exports.addUser = (req, res, next) => {
-  const { name, about, avatar } = req.body;
-  User.create({ name, about, avatar })
-    .then((user) => res.status(httpConstants.HTTP_STATUS_CREATED).send(user))
-    .catch((error) => {
-      if (error.name === 'ValidationError') {
-        next(new BadRequestError(error.message));
-      } else {
-        res.status(httpConstants.HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'На сервере произошла ошибка' });
-      }
-    });
+  const {
+    name, about, avatar, email, password,
+  } = req.body;
+  bcrypt.hash(password, 10)
+    .then((hash) => User.create({
+      name, about, avatar, email, password: hash,
+    })
+      .then(() => res.status(httpConstants.HTTP_STATUS_CREATED).send({
+        name, about, avatar, email,
+      }))
+      .catch((error) => {
+        if (error.code === 11000) {
+          next(new ConflictError('Пользователь с данным Email уже зарегестрирован'));
+        } else if (error.name === 'ValidationError') {
+          next(new BadRequestError(error.message));
+        } else {
+          next(error);
+        }
+      }));
 };
 
 module.exports.getUserId = (req, res, next) => {

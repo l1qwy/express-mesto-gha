@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const validator = require('validator');
+// const validator = require('validator');
 
 const userSchema = new mongoose.Schema(
   {
@@ -33,7 +33,9 @@ const userSchema = new mongoose.Schema(
       unique: true,
       validate: {
         validator(email) {
-          validator.isEmail(email);
+          return /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/g.test(
+            email,
+          );
         },
         message: 'Введите корректный Email',
       },
