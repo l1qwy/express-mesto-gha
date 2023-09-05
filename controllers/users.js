@@ -12,7 +12,7 @@ module.exports.getUsers = (req, res, next) => {
     .catch(next);
 };
 
-module.exports.addUser = (req, res, next) => {
+module.exports.createUser = (req, res, next) => {
   const {
     name, about, avatar, email, password,
   } = req.body;
@@ -20,8 +20,8 @@ module.exports.addUser = (req, res, next) => {
     .then((hash) => User.create({
       name, about, avatar, email, password: hash,
     })
-      .then(() => res.status(httpConstants.HTTP_STATUS_CREATED).send({
-        name, about, avatar, email,
+      .then((user) => res.status(httpConstants.HTTP_STATUS_CREATED).send({
+        name: user.name, about: user.about, avatar: user.avatar, email: user.email, _id: user._id,
       }))
       .catch((error) => {
         if (error.code === 11000) {
