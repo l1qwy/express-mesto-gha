@@ -1,6 +1,7 @@
 const httpConstants = require('http2').constants;
 const BadRequestError = require('../errors/badRequest');
 const NotFoundError = require('../errors/notFound');
+const ForbiddenError = require('../errors/forbidden');
 const Card = require('../models/card');
 
 module.exports.getCards = (req, res, next) => {
@@ -38,20 +39,36 @@ module.exports.addCard = (req, res, next) => {
 };
 
 module.exports.deleteCard = (req, res, next) => {
-  Card.findByIdAndRemove(req.params.cardId)
+  Card.findById(req.params.cardId)
     .orFail()
-    .then(() => {
-      res
-        .status(httpConstants.HTTP_STATUS_OK)
-        .send({ message: 'Карточка удалена' });
+    .then((card) => {
+      if (!card.owner.equals(req.user._id)) {
+        throw new ForbiddenError('Карточка другого пользователя');
+      }
+      Card.deleteOne(card)
+        .orFail()
+        .then(() => {
+          res
+            .status(httpConstants.HTTP_STATUS_OK)
+            .send({ message: 'Карточка удалена' });
+        })
+        .catch((error) => {
+          if (error.name === 'DocumentNotFoundError') {
+            next(
+              new NotFoundError('Карточка с указанным индификатором не найдена'),
+            );
+          } else if (error.name === 'CastError') {
+            next(new BadRequestError('Некорректный индификатор'));
+          } else {
+            next(error);
+          }
+        });
     })
     .catch((error) => {
       if (error.name === 'DocumentNotFoundError') {
         next(
           new NotFoundError('Карточка с указанным индификатором не найдена'),
         );
-      } else if (error.name === 'CastError') {
-        next(new BadRequestError('Некорректный индификатор'));
       } else {
         next(error);
       }
