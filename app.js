@@ -20,14 +20,6 @@ mongoose.connect(DB_URL, {
   useUnifiedTopology: true,
 });
 
-app.use((req, res, next) => {
-  req.user = {
-    _id: '64f62f9cb5e3211b1baa7f92',
-  };
-
-  next();
-});
-
 app.use('/', require('./routes/index'));
 
 app.use('*', (req, res) => {

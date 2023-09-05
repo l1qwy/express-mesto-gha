@@ -1,6 +1,6 @@
 const httpConstants = require('http2').constants;
 const bcrypt = require('bcryptjs');
-// const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
 const User = require('../models/user');
 const BadRequestError = require('../errors/badRequest');
 const NotFoundError = require('../errors/notFound');
@@ -21,7 +21,7 @@ module.exports.createUser = (req, res, next) => {
       name, about, avatar, email, password: hash,
     })
       .then((user) => res.status(httpConstants.HTTP_STATUS_CREATED).send({
-        name: user.name, about: user.about, avatar: user.avatar, email: user.email, _id: user._id,
+        name: user.name, about: user.about, avatar: user.avatar, email: user.email,
       }))
       .catch((error) => {
         if (error.code === 11000) {
@@ -90,4 +90,22 @@ module.exports.editUserAvatar = (req, res, next) => {
         next(error);
       }
     });
+};
+
+module.exports.login = (req, res, next) => {
+  const { email, password } = req.body;
+  return User.findUserByCredentials(email, password)
+    .then((user) => {
+      const token = jwt.sign({ _id: user._id }, 'auth-test', { expiresIn: '7d' });
+      res.status(httpConstants.HTTP_STATUS_OK).send({ token });
+    })
+    .catch((error) => {
+      next(error);
+    });
+};
+
+module.exports.getMe = (req, res, next) => {
+  User.findById(req.user._id)
+    .then((user) => res.status(httpConstants.HTTP_STATUS_OK).send(user))
+    .catch(next);
 };
