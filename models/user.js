@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      default: 'Жак Ив Кусто',
+      default: 'Жак-Ив Кусто',
       minlength: [2, 'Минимальная длина поля - 2 символа'],
       maxlength: [30, 'Максимальная длина поля - 30 символов'],
     },
