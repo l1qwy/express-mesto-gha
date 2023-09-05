@@ -13,9 +13,9 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Поле должно быть заполнено'],
       validate: {
-        validator(url) {
+        validator(link) {
           return urlRegex.test(
-            url,
+            link,
           );
         },
         message: 'Введен некорректный адрес',
